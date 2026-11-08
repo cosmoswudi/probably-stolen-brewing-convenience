@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Manifest>
+  <ID>brewing_convenience</ID>
+  <Name>酿酒便利化</Name>
+  <Author>XJia</Author>
+  <ModVersion>0.2.7</ModVersion>
+  <Description>一台自动分拣葡萄、自动配比、自动灌水并批量发酵的酿酒机器。</Description>
+  <GameVersions />
+  <Prerequisites />
+  <Assemblies>
+    <Assembly>BrewingConvenience.dll</Assembly>
+  </Assemblies>
+  <Capabilities />
+</Manifest>

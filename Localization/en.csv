@@ -1,0 +1,51 @@
+﻿machine_name,Brewery Convenience
+machine_desc,Drop grapes into the intake and press Sort; then press Brew. Pairing / water / yeast are handled for you.
+panel_grape,Intake
+panel_normal,Normal
+panel_small,Small
+panel_other,Other
+panel_bottle,Empty bottles
+panel_yeast,Yeast
+panel_water,Water
+panel_ferment,Fermenting / Ready
+panel_control,Control
+btn_sort,Sort
+btn_brew,Brew
+status_best,Best possible
+status_ferment,Fermenting
+status_ready,Ready
+hint_label,Action
+hint_sorted,Sorted
+hint_brew,Started
+hint_full,bins full
+hint_nothing,No grapes to sort
+hint_nothing_brew,Not enough material
+why_water_container,No water container
+why_water,Not enough water (750ml)
+why_bad_water,Water quality too low
+why_bottle,No empty bottle
+why_yeast,No yeast
+why_berry,No valid grape pair
+why_put_fail,Could not fill bottle
+q_master,Master Vintage
+q_reserve,Reserve Vintage
+q_production,Production Wine
+q_homebrew,Home Brew
+q_bucket,Bucket Brew
+q_undrinkable,Undrinkable
+q_no_water_container,No water container
+q_water_low,Not enough water
+cfg_target,Target: Reserve Vintage (score 5)
+cfg_target_tip,Off = Master Vintage (score 6). On = Reserve Vintage (exactly 5).
+why_ferment_full,Fermenting area full
+q_need_berry,Need two grapes
+panel_help,How to use
+help_l1,1. Grapes -> Intake
+help_l2,2. Sort into 3 bins
+help_l3,3. Bottles + yeast + one water
+help_l4,4. Brew all - ready in 2 nights
+help_l5,5. Wine stays in ferment area
+help_l6,Selling it destroys the contents
+panel_supplies,Yeast / Water
+doc_title,How to use: Brewery Convenience
+doc_short,How to use the brewery machine (click)

@@ -1,0 +1,51 @@
+﻿machine_name,酿酒便利机
+machine_desc,把葡萄丢进投放区点「分拣葡萄」，再点「全部开酿」。配比、灌水、放酵母全自动。
+panel_grape,葡萄投放
+panel_normal,正常果
+panel_small,小果
+panel_other,其他果
+panel_bottle,空酒瓶
+panel_yeast,酵母
+panel_water,储水
+panel_ferment,发酵 / 成品
+panel_control,控制
+btn_sort,分拣
+btn_brew,开酿
+status_best,当前可酿最优
+status_ferment,发酵中
+status_ready,成品
+hint_label,操作
+hint_sorted,已分拣
+hint_brew,已开酿
+hint_full,满了
+hint_nothing,没有可分的葡萄
+hint_nothing_brew,材料不足
+why_water_container,缺水容器
+why_water,水量不足 750ml
+why_bad_water,水质太差
+why_bottle,缺空酒瓶
+why_yeast,缺酵母
+why_berry,没有合适的两颗葡萄
+why_put_fail,装瓶失败
+q_master,琼浆玉液
+q_reserve,臻品窖藏
+q_production,量产酒液
+q_homebrew,手工自酿
+q_bucket,粗桶劣酿
+q_undrinkable,难以下咽
+q_no_water_container,缺水容器
+q_water_low,水量不足
+cfg_target,目标是臻品窖藏（5 分）
+cfg_target_tip,关闭 = 酿琼浆玉液（6 分）；打开 = 酿臻品窖藏（恰好 5 分）
+why_ferment_full,发酵区已满
+q_need_berry,需要两颗葡萄
+panel_help,使用说明
+help_l1,① 葡萄丢进投放区
+help_l2,② 点分拣 → 分三堆
+help_l3,③ 放空瓶 / 酵母 / 一容器水
+help_l4,④ 点全部开酿 · 两夜成酒
+help_l5,⑤ 成品留在发酵区自取
+help_l6,卖出或丢弃会连内容物一起消失
+panel_supplies,酵母 / 储水
+doc_title,使用说明：酿酒便利机
+doc_short,酿酒便利机的使用说明（点开查看）
