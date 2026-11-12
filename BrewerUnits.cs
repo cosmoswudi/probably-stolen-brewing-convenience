@@ -21,11 +21,16 @@ namespace BrewingConvenience
         public GameGridInventory WaterBin;
         public GameGridInventory FermentBin;
 
-        public MachineryText BestText;
         public MachineryText HintText;
 
         /// <summary>发酵/成品面板本体 —— 发酵进度直接写在它的标题上，不占状态行高度。</summary>
         public MachineryPanel FermentPanel;
+
+        // 控制区的三个控件，文字要随状态变，所以留着引用
+        public MachineryButton TargetButton;
+        public MachineryButton YeastButton;
+        public MachineryButton ForceButton;
+        public MachineryButton PriorityButton;
 
         /// <summary>一瓶最多同时开酿的瓶数（发酵区 8x4 / 瓶子 1x4 = 8 个位置）。</summary>
         private const int MaxConcurrentBottles = 8;
@@ -36,8 +41,6 @@ namespace BrewingConvenience
         /// </summary>
         public bool Sorting;
 
-        private string _lastBest;
-        private string _lastHint;
         private string _lastFermentLabel;
 
         /// <summary>
@@ -203,21 +206,118 @@ namespace BrewingConvenience
 
             if (HintText != null)
             {
-                string label = Loc.Get("hint_sorted", "已分拣");
-                string value = moved + (full > 0 ? " · " + Loc.Get("hint_full", "满了") + full : "");
+                string value = Loc.Get("hint_sorted", "已分拣") + " " + moved;
+                if (full > 0) value += " · " + Loc.Get("hint_full", "满了") + full;
                 if (moved == 0 && full == 0) value = Loc.Get("hint_nothing", "没有可分的葡萄");
-                SetStatus(HintText, label, value);
+                SetText(HintText, value);
             }
 
             Refresh();
+        }
+
+        // ─────────────────────────────────── 目标档位 / 酵母 / 执行类别
+
+        /// <summary>最高档位 = 琼浆玉液；最低 = 难以下咽。</summary>
+        public const int MaxTier = 5;
+
+        /// <summary>「优先」模式向下退档的底限：量产酒液。再往下就不酿了，免得把葡萄烧成垃圾酒。</summary>
+        private const int MinFallbackTier = 3;
+
+        /// <summary>目标档位（5..0）。老机器没有这个 tag 时读全局默认值。</summary>
+        public int TargetTier
+        {
+            get
+            {
+                if (Machine != null && Machine.IsTag(WineTags.TargetTierTag))
+                    return ClampTier(Machine.GetTagReadonly(WineTags.TargetTierTag).GetInt());
+                return Config.DefaultTargetTier;
+            }
+        }
+
+        /// <summary>是否必须使用酵母（关掉少 1 分，发酵 2 晚变 4 晚）。</summary>
+        public bool UseYeast
+        {
+            get
+            {
+                if (Machine != null && Machine.IsTag(WineTags.UseYeastTag))
+                    return Machine.GetTagReadonly(WineTags.UseYeastTag).IsEnabled();
+                return Config.DefaultUseYeast;
+            }
+        }
+
+        /// <summary>true = 强制（必须落在目标档），false = 优先（够不到就往下退）。</summary>
+        public bool ForceMode
+        {
+            get
+            {
+                if (Machine != null && Machine.IsTag(WineTags.ForceTierTag))
+                    return Machine.GetTagReadonly(WineTags.ForceTierTag).IsEnabled();
+                return Config.DefaultForce;
+            }
+        }
+
+        private static int ClampTier(int tier)
+        {
+            if (tier < 0) return 0;
+            if (tier > MaxTier) return MaxTier;
+            return tier;
+        }
+
+        /// <summary>点一下降一档，到底后回到最高档。</summary>
+        public void CycleTier()
+        {
+            int next = TargetTier - 1;
+            if (next < 0) next = MaxTier;
+            Machine.ModifyTag(WineTags.TargetTierTag, st => { st.Enable(); st.SetInt(next); }, false);
+            RefreshButtons();
+        }
+
+        public void ToggleYeast()
+        {
+            bool next = !UseYeast;
+            Machine.ModifyTag(WineTags.UseYeastTag, st => { if (next) st.Enable(); else st.Disable(); }, false);
+            RefreshButtons();
+        }
+
+        public void SetForce(bool force)
+        {
+            Machine.ModifyTag(WineTags.ForceTierTag, st => { if (force) st.Enable(); else st.Disable(); }, false);
+            RefreshButtons();
+        }
+
+        /// <summary>把三个控件的文字刷成当前状态（方括号表示当前选中）。</summary>
+        public void RefreshButtons()
+        {
+            try
+            {
+                string forceName = Loc.Get("ui_force", "强制");
+                string priorityName = Loc.Get("ui_priority", "优先");
+
+                if (TargetButton != null)
+                    TargetButton.SetText(Loc.Get("ui_target", "目标") + ":" + WineTags.TierNameByTier(TargetTier));
+                if (YeastButton != null)
+                    YeastButton.SetText(UseYeast ? Loc.Get("ui_yeast_on", "酵母 开") : Loc.Get("ui_yeast_off", "酵母 关"));
+                if (ForceButton != null)
+                    ForceButton.SetText(ForceMode ? "[" + forceName + "]" : forceName);
+                if (PriorityButton != null)
+                    PriorityButton.SetText(ForceMode ? priorityName : "[" + priorityName + "]");
+            }
+            catch (Exception)
+            {
+                // 控件还没建好时忽略
+            }
         }
 
         // ─────────────────────────────────────────────────────────── 酿造
 
         public void Brew()
         {
-            int target = Config.TargetScore;
+            int targetTier = TargetTier;
+            bool force = ForceMode;
+            bool useYeast = UseYeast;
+
             int brewed = 0;
+            int madeTier = -1;
             string reason = null;
 
             _suspendRefresh = true;
@@ -226,12 +326,14 @@ namespace BrewingConvenience
                 for (int i = 0; i < MaxConcurrentBottles; i++)
                 {
                     string why;
-                    if (!BrewOne(target, out why))
+                    int tier;
+                    if (!BrewOne(targetTier, force, useYeast, out why, out tier))
                     {
                         reason = why;
                         break;
                     }
                     brewed++;
+                    madeTier = tier;
                 }
             }
             finally
@@ -241,20 +343,32 @@ namespace BrewingConvenience
 
             if (HintText != null)
             {
-                string label = Loc.Get("hint_brew", "已开酿");
-                string value = brewed.ToString();
-                if (reason != null) value += " · " + reason;
-                if (brewed == 0 && reason == null) value = Loc.Get("hint_nothing_brew", "材料不足");
-                SetStatus(HintText, label, value);
+                string value;
+                if (brewed > 0)
+                {
+                    value = reason == null && madeTier >= 0
+                        ? brewed + "→" + WineTags.TierNameByTier(madeTier)
+                        : brewed + " · " + reason;
+                }
+                else
+                {
+                    value = reason ?? Loc.Get("hint_nothing_brew", "材料不足");
+                }
+                SetText(HintText, value);
             }
 
+            RefreshButtons();
             Refresh();
         }
 
-        /// <summary>配一瓶：挑两颗分值达标的葡萄 + 一个酵母 + 灌 750ml 水 → 起酵 → 进发酵区。</summary>
-        private bool BrewOne(int target, out string reason)
+        /// <summary>
+        /// 配一瓶：挑两颗能落到目标档的葡萄（可选酵母）+ 灌 750ml 水 → 起酵 → 进发酵区。
+        /// force=true 时够不到目标档就不酿；false 时向下退档，底限是量产酒液。
+        /// </summary>
+        private bool BrewOne(int targetTier, bool force, bool useYeast, out string reason, out int madeTier)
         {
             reason = null;
+            madeTier = -1;
 
             GameItem water = Water();
             if (water == null)
@@ -265,16 +379,6 @@ namespace BrewingConvenience
             if (WaterHelper.GetCurrentCapacityML(water) < WineTags.BottleMl)
             {
                 reason = Loc.Get("why_water", "水量不足 750ml");
-                return false;
-            }
-
-            // wineScore = 两果分值之和 + 1(果子≥2颗) + 1(有酵母) + 水质分
-            int waterScore = WineTags.WaterScoreOf(water);
-            int need = target - 2 - waterScore;
-            if (need < 0) need = 0;
-            if (need > 4)
-            {
-                reason = Loc.Get("why_bad_water", "水质太差");
                 return false;
             }
 
@@ -291,39 +395,67 @@ namespace BrewingConvenience
                 return false;
             }
 
-            GameItem yeast = YeastBin.childItems.FirstOrDefault(WineTags.IsYeast);
-            if (yeast == null)
+            GameItem yeast = null;
+            if (useYeast)
             {
-                reason = Loc.Get("why_yeast", "缺酵母");
-                return false;
+                // 非法酵母会把整瓶变成假酒（分值被强制成 3），直接跳过它，用下一颗合法酵母
+                yeast = YeastBin.childItems.FirstOrDefault(i => WineTags.IsYeast(i) && !WineTags.IsIllegalYeast(i));
+                if (yeast == null)
+                {
+                    reason = Loc.Get("why_yeast", "缺酵母");
+                    return false;
+                }
             }
 
-            // 臻品窖藏要求分值"恰好"5，多一分就跳到量产/琼浆，所以必须精确匹配
-            List<BerryPick> pair = FindPair(Berries(), need, exact: target == 5);
+            int waterScore = WineTags.WaterScoreOf(water);
+            int baseBonus = 1 + (useYeast ? 1 : 0);   // 果子数加成 + 酵母加成
+
+            List<BerryPick> pair = FindPairForTier(Berries(), baseBonus, waterScore, targetTier);
+            madeTier = targetTier;
+
             if (pair == null)
             {
-                reason = Loc.Get("why_berry", "没有合适的两颗葡萄");
-                return false;
+                if (force)
+                {
+                    reason = Loc.Get("why_tier_locked", "达不到目标档位");
+                    return false;
+                }
+
+                for (int t = targetTier - 1; t >= MinFallbackTier; t--)
+                {
+                    pair = FindPairForTier(Berries(), baseBonus, waterScore, t);
+                    if (pair != null)
+                    {
+                        madeTier = t;
+                        break;
+                    }
+                }
+
+                if (pair == null)
+                {
+                    reason = Loc.Get("why_berry", "没有合适的葡萄");
+                    return false;
+                }
             }
 
             // ── 从各区取出 ──
-            bool reusableYeast = yeast.IsTag(WineTags.YeastReusable);
+            bool reusableYeast = yeast != null && yeast.IsTag(WineTags.YeastReusable);
 
             BottleBin.Expel(bottle);
             pair[0].Bin.Expel(pair[0].Item);
             pair[1].Bin.Expel(pair[1].Item);
-            YeastBin.Expel(yeast);
+            if (yeast != null) YeastBin.Expel(yeast);
 
             // ── 装进酒瓶 ──
             bool ok = PutInBottle(bottle, pair[0].Item)
                    && PutInBottle(bottle, pair[1].Item)
-                   && PutInBottle(bottle, yeast);
+                   && (yeast == null || PutInBottle(bottle, yeast));
 
             if (!ok)
             {
                 ReturnHome(pair[0]);
                 ReturnHome(pair[1]);
-                if (yeast.parentInventory == null) YeastBin.TryAcceptAll(yeast);
+                if (yeast != null && yeast.parentInventory == null) YeastBin.TryAcceptAll(yeast);
                 if (bottle.parentInventory == null) BottleBin.TryAcceptAll(bottle);
                 reason = Loc.Get("why_put_fail", "装瓶失败");
                 return false;
@@ -387,27 +519,24 @@ namespace BrewingConvenience
         }
 
         /// <summary>
-        /// 在候选葡萄里找一对：exact=true 要求和恰好等于 need，否则要求和 ≥ need。
-        /// 同等条件下取"和最小、且最大那颗最小"的组合，把好果子留给下一瓶。
+        /// 找一对葡萄，使 wineScore 正好落在指定档位里。
+        /// 有多组可选时取分值最低的那组，把好果子留给下一瓶。
         /// </summary>
-        private static List<BerryPick> FindPair(List<BerryPick> all, int need, bool exact)
+        private static List<BerryPick> FindPairForTier(List<BerryPick> all, int baseBonus, int waterScore, int tier)
         {
             List<BerryPick> best = null;
-            int bestSum = int.MaxValue;
-            int bestMax = int.MaxValue;
+            int bestScore = int.MaxValue;
 
             for (int i = 0; i < all.Count; i++)
             {
                 for (int j = i + 1; j < all.Count; j++)
                 {
-                    int sum = all[i].Value + all[j].Value;
-                    if (exact ? sum != need : sum < need) continue;
+                    int score = all[i].Value + all[j].Value + baseBonus + waterScore;
+                    if (WineTags.Tier(score) != tier) continue;
 
-                    int max = Math.Max(all[i].Value, all[j].Value);
-                    if (sum < bestSum || (sum == bestSum && max < bestMax))
+                    if (score < bestScore)
                     {
-                        bestSum = sum;
-                        bestMax = max;
+                        bestScore = score;
                         best = new List<BerryPick> { all[i], all[j] };
                     }
                 }
@@ -458,15 +587,6 @@ namespace BrewingConvenience
                     }
                 }
 
-                if (BestText != null)
-                {
-                    string value = BestQualityName();
-                    if (force || value != _lastBest)
-                    {
-                        _lastBest = value;
-                        SetStatus(BestText, Loc.Get("status_best", "当前可酿最优"), value);
-                    }
-                }
             }
             catch (Exception)
             {
@@ -474,32 +594,9 @@ namespace BrewingConvenience
             }
         }
 
-        private static void SetStatus(MachineryText text, string label, string value)
+        private static void SetText(MachineryText text, string value)
         {
-            try { text.SetStatus(label, value); } catch { }
-        }
-
-        /// <summary>按"当前水质 + 现有葡萄实际分值 + 有没有酵母"精算能酿到的最高品质。</summary>
-        private string BestQualityName()
-        {
-            GameItem water = Water();
-            if (water == null) return Loc.Get("q_no_water_container", "缺水容器");
-            if (WaterHelper.GetCurrentCapacityML(water) < WineTags.BottleMl)
-                return Loc.Get("q_water_low", "水量不足");
-
-            int waterScore = WineTags.WaterScoreOf(water);
-
-            List<int> values = Berries().Select(b => b.Value).OrderByDescending(v => v).ToList();
-            int count = Math.Min(2, values.Count);
-            if (count < 2) return Loc.Get("q_need_berry", "需要两颗葡萄");
-
-            int sum = 0;
-            for (int i = 0; i < count; i++) sum += values[i];
-
-            bool hasYeast = YeastBin != null && YeastBin.childItems.Any(WineTags.IsYeast);
-            int score = sum + (count >= 2 ? 1 : 0) + (hasYeast ? 1 : 0) + waterScore;
-
-            return WineTags.TierName(score);
+            try { text.SetText(value); } catch { }
         }
 
         // ─────────────────────────────────────────────────────────── 小工具

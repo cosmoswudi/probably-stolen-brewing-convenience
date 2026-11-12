@@ -19,6 +19,14 @@ namespace BrewingConvenience
 
         /// <summary>可复用酵母（酵母生物反应器 wine_yeast_infinite）——发酵时不会被消耗，而是被丢到柜台上。</summary>
         public const string YeastReusable = "WINE_YEAST_REUSABLE_TAG";
+
+        /// <summary>非法酵母（wine_yeast_red）——会把整瓶标记成假酒、分值锁死为 3。</summary>
+        public const string IllegalYeast = "WINE_YEAST_ILLEGAL_TAG";
+
+        // ── 每台机器的设置（存机器自己的 tag，随存档走）──
+        public const string TargetTierTag = "BREW_TARGET_TIER_INT";   // 5..0
+        public const string UseYeastTag = "BREW_USE_YEAST_TAG";       // 有 = 必须放酵母
+        public const string ForceTierTag = "BREW_FORCE_TIER_TAG";     // 有 = 强制，无 = 优先
         public const string LiquidContainer = "LIQUID_CONTAINER_TAG";
         public const string IgnoreChildValue = "IGNORE_CHILD_VALUE";
 
@@ -154,8 +162,18 @@ namespace BrewingConvenience
 
         public static string TierName(int score)
         {
-            int t = Tier(score);
-            return Loc.Get(TierKey(t), TierFallback(t));
+            return TierNameByTier(Tier(score));
+        }
+
+        /// <summary>档位索引 → 本地化名（5 琼浆玉液 … 0 难以下咽）。</summary>
+        public static string TierNameByTier(int tier)
+        {
+            return Loc.Get(TierKey(tier), TierFallback(tier));
+        }
+
+        public static bool IsIllegalYeast(GameItem item)
+        {
+            return item != null && item.IsTag(IllegalYeast);
         }
     }
 }

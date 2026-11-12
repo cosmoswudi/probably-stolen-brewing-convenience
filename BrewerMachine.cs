@@ -73,11 +73,24 @@ namespace BrewingConvenience
                 && WineTags.IsOwned(item);
 
             // ── 控件 ───────────────────────────────────────────────────
-            var sortButton = new MachineryButton(Loc.Get("btn_sort", "分拣"), null, 58, 22);
-            var brewButton = new MachineryButton(Loc.Get("btn_brew", "开酿"), null, 58, 22);
+            var sortButton = new MachineryButton(Loc.Get("btn_sort", "分拣"), null, 50, 22);
+            var brewButton = new MachineryButton(Loc.Get("btn_brew", "开酿"), null, 50, 22);
 
-            units.BestText = MachineryText.Status(Loc.Get("status_best", "当前可酿最优"), "-");
-            units.HintText = MachineryText.Status(Loc.Get("hint_label", "操作"), "-");
+            // 目标档位：点一下降一档（琼浆玉液 → … → 难以下咽 → 回到琼浆玉液）
+            var targetButton = new MachineryButton("", null, 86, 22);
+            // 酵母开关：开 = 必须放酵母；关 = 不放（少 1 分，4 个夜晚出酒）
+            var yeastButton = new MachineryButton("", null, 46, 22);
+            // 执行类别：强制 / 优先
+            var forceButton = new MachineryButton("", null, 40, 22);
+            var priorityButton = new MachineryButton("", null, 40, 22);
+
+            units.TargetButton = targetButton;
+            units.YeastButton = yeastButton;
+            units.ForceButton = forceButton;
+            units.PriorityButton = priorityButton;
+
+            // 操作反馈用纯文本（没有标签列），才塞得进按钮同一行
+            units.HintText = new MachineryText("—", 10, HorizontalAlignmentOptions.Left, false);
 
             // ── 原版那种「小纸条」说明书 ───────────────────────────────
             // 注意：便签不能在 Create() 里塞进槽位。工厂函数必须产出"干净"的机器，
@@ -86,21 +99,28 @@ namespace BrewingConvenience
             GameSlotInventory noteSlot = new GameSlotInventory();
             MachineHelper.SetupManualSlot(noteSlot);
 
-            // 按钮独占一行；便签挪到"当前可酿最优"那一行的右端，
-            // 这样控制区最宽的一行就只是按钮行，省下的宽度让空瓶区/发酵区能放进 8 列。
+            // 控制区三行：
+            //   1) 分拣 / 开酿 / 便签
+            //   2) 目标档位 / 酵母开关
+            //   3) 强制 / 优先 / 操作反馈
             var buttonsRow = MachineryStack.Horizontal(new PixelElement[]
             {
-                sortButton, brewButton
+                sortButton, brewButton, noteSlot
             });
 
-            var statusRow = MachineryStack.Horizontal(new PixelElement[]
+            var optionRow = MachineryStack.Horizontal(new PixelElement[]
             {
-                units.BestText, noteSlot
+                targetButton, yeastButton
+            });
+
+            var modeRow = MachineryStack.Horizontal(new PixelElement[]
+            {
+                forceButton, priorityButton, units.HintText
             });
 
             var control = MachineryStack.Vertical(new PixelElement[]
             {
-                buttonsRow, statusRow, units.HintText
+                buttonsRow, optionRow, modeRow
             });
 
             // 酵母和储水都很小，合成一块面板，面板总数才能压到 8 个 → 正好两排
@@ -180,12 +200,18 @@ namespace BrewingConvenience
             units.Machine = machine;
             sortButton.SetCallback(() => units.Sort());
             brewButton.SetCallback(() => units.Brew());
+            targetButton.SetCallback(() => units.CycleTier());
+            yeastButton.SetCallback(() => units.ToggleYeast());
+            forceButton.SetCallback(() => units.SetForce(true));
+            priorityButton.SetCallback(() => units.SetForce(false));
 
             // 「不开窗直接把物品扔到机器上」——自己按类型分发到对应区域。
             // 原版是靠窗口的关联存储自动找位置，换成自由行布局后那条链断了，
             // 所以改用物品对物品的投放回调（原版倒水、工具箱也是用这一对）。
             machine.canItemTargetThisFunc = (item, self) => units.CanTake(item);
             machine.onItemTargetThisFunc = (item, self) => units.Take(item);
+
+            units.RefreshButtons();
 
             window.openCallback = () =>
             {
@@ -225,10 +251,15 @@ namespace BrewingConvenience
 
         /// <summary>说明书正文（写死在代码里，不走语言表：CSV 存不了多行文本）。</summary>
         private const string ManualBody =
-            "<size=70%>把葡萄拖进「葡萄投放」区，点「分拣」，机器会按分值分成正常果、小果、其他果三堆。\n\n" +
-            "「空酒瓶」放空的啤酒瓶；「酵母 / 储水」放酵母和一个装着优质水的容器。\n\n" +
-            "点「开酿」，机器会自己配好两颗分值达标的果子 ＋ 酵母 ＋ 750ml 水，装瓶并起酵。\n\n" +
-            "两个夜晚后成酒，成品留在「发酵 / 成品」区，取走即可。\n\n" +
+            "<size=60%>【三个按钮】\n" +
+            "「目标」：点一下降一档，琼浆玉液 → 臻品窖藏 → 量产酒液 → 手工自酿 → 粗桶劣酿 → 难以下咽，到底后回到最高档。\n" +
+            "「酵母 开/关」：关掉后少 1 分，出酒时间从 2 个夜晚变成 4 个夜晚。\n" +
+            "「强制 / 优先」：强制 = 最终分值必须落在目标档，差一分都不酿；优先 = 先按目标档酿，凑不出就自动往下降一档，最低只降到量产酒液。\n\n" +
+            "【配比】\n" +
+            "两颗葡萄分值之和 + 1（≥2 颗）+ 1（有酵母）+ 水质分。\n" +
+            "优质水 +1，基础水 0，幽灵水及以下为负。\n\n" +
+            "【用法】\n" +
+            "葡萄丢进投放区 → 分拣 → 放空瓶、酵母、一个装水的容器 → 开酿。发酵区最多同时 8 瓶。\n\n" +
             "注意：卖掉或丢掉这台机器，里面的东西会一起消失。</size>";
 
         /// <summary>

@@ -21,7 +21,7 @@ hint_full,bins full
 hint_nothing,No grapes to sort
 hint_nothing_brew,Not enough material
 why_water_container,No water container
-why_water,Not enough water (750ml)
+why_water,Not enough water
 why_bad_water,Water quality too low
 why_bottle,No empty bottle
 why_yeast,No yeast
@@ -49,3 +49,9 @@ help_l6,Selling it destroys the contents
 panel_supplies,Yeast / Water
 doc_title,How to use: Brewery Convenience
 doc_short,How to use the brewery machine (click)
+ui_target,Target
+ui_yeast_on,Yeast ON
+ui_yeast_off,Yeast OFF
+ui_force,Force
+ui_priority,Prefer
+why_tier_locked,Target unreachable

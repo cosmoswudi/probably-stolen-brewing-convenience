@@ -31,7 +31,6 @@ namespace BrewingConvenience
         {
             Instance = this;
             _log = new ModLog(manifest);
-            Config.Init(ModId);
             _log.Log(manifest.Name + " v" + manifest.ModVersion + " 已初始化。");
         }
 
@@ -41,7 +40,6 @@ namespace BrewingConvenience
             // Early 比 Late 早：博士一摆货我们就先占位，否则 3x3 的整块空位会被其他货切碎
             ModHook.OnPlaceInventorInventoryItemEarly += OnInventorStock;
             ModHook.OnPlaceInventorInventoryItemLate += OnInventorStock;
-            ModHook.OnModConfigApplied += OnConfigApplied;
             ModHook.OnGameLoadedLate += OnGameLoaded;
 
             RegisterDebugFunction();
@@ -54,7 +52,6 @@ namespace BrewingConvenience
             ModHook.OnModItemDirectoryInit -= OnItemDirectoryInit;
             ModHook.OnPlaceInventorInventoryItemEarly -= OnInventorStock;
             ModHook.OnPlaceInventorInventoryItemLate -= OnInventorStock;
-            ModHook.OnModConfigApplied -= OnConfigApplied;
             ModHook.OnGameLoadedLate -= OnGameLoaded;
 
             try { ModHelper.RemoveDebugFunctions(ModId); } catch (Exception) { }
@@ -125,11 +122,6 @@ namespace BrewingConvenience
         }
 
         // ───────────────────────────────────────────────────── 配置 / 读档
-
-        private static void OnConfigApplied(string modId)
-        {
-            if (modId == ModId) Config.Apply();
-        }
 
         /// <summary>读档后再刷一次机器名称，避免语言表未就绪时工厂里取到的是兜底串。</summary>
         private static void OnGameLoaded()

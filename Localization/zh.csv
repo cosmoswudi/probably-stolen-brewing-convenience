@@ -21,7 +21,7 @@ hint_full,满了
 hint_nothing,没有可分的葡萄
 hint_nothing_brew,材料不足
 why_water_container,缺水容器
-why_water,水量不足 750ml
+why_water,水不够
 why_bad_water,水质太差
 why_bottle,缺空酒瓶
 why_yeast,缺酵母
@@ -49,3 +49,9 @@ help_l6,卖出或丢弃会连内容物一起消失
 panel_supplies,酵母 / 储水
 doc_title,使用说明：酿酒便利机
 doc_short,酿酒便利机的使用说明（点开查看）
+ui_target,目标
+ui_yeast_on,酵母 开
+ui_yeast_off,酵母 关
+ui_force,强制
+ui_priority,优先
+why_tier_locked,够不到目标档
