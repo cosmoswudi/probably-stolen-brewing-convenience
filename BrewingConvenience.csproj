@@ -51,7 +51,13 @@
   <!-- 注意：必须用 %(RelativeDir) 而不是 %(RecursiveDir)。RecursiveDir 会吞掉
        "Textures\" / "Localization\" 这一层前缀，把文件摊平到根目录，
        而游戏扫描资源是「路径精确、不递归」的，摊平后就等于没装。 -->
-  <Target Name="InstallMod" AfterTargets="Build">
+  <!--
+    默认不往游戏目录装。想本地调试时显式加参数：
+        dotnet build -c Release -p:InstallLocal=true
+    原因：工坊订阅的版本和本地版本 mod ID 相同，
+    自动安装会造出第二份同 ID 的副本，游戏可能随机取一份，很难分辨测的是哪个。
+  -->
+  <Target Name="InstallMod" AfterTargets="Build" Condition="'$(InstallLocal)' == 'true'">
     <MakeDir Directories="$(ModInstallDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModInstallDir)" />
     <Copy SourceFiles="@(ModFile)" DestinationFolder="$(ModInstallDir)\%(RelativeDir)" Condition="Exists('%(ModFile.FullPath)')" />
