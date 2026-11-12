@@ -206,10 +206,10 @@ namespace BrewingConvenience
 
             if (HintText != null)
             {
-                string value = Loc.Get("hint_sorted", "已分拣") + " " + moved;
-                if (full > 0) value += " · " + Loc.Get("hint_full", "满了") + full;
-                if (moved == 0 && full == 0) value = Loc.Get("hint_nothing", "没有可分的葡萄");
-                SetText(HintText, value);
+                string value = Loc.Get("hint_sorted", "分拣") + " " + moved;
+                if (full > 0) value += " " + Loc.Get("hint_full", "满") + full;
+                if (moved == 0 && full == 0) value = Loc.Get("hint_nothing", "无可分葡萄");
+                SetText(HintText, Clip(value, 12));
             }
 
             Refresh();
@@ -237,22 +237,30 @@ namespace BrewingConvenience
         /// <summary>是否必须使用酵母（关掉少 1 分，发酵 2 晚变 4 晚）。</summary>
         public bool UseYeast
         {
-            get
-            {
-                if (Machine != null && Machine.IsTag(WineTags.UseYeastTag))
-                    return Machine.GetTagReadonly(WineTags.UseYeastTag).IsEnabled();
-                return Config.DefaultUseYeast;
-            }
+            get { return ReadThreeState(WineTags.UseYeastIntTag, Config.DefaultUseYeast ? 2 : 1) == 2; }
         }
 
         /// <summary>true = 强制（必须落在目标档），false = 优先（够不到就往下退）。</summary>
         public bool ForceMode
         {
-            get
+            get { return ReadThreeState(WineTags.ForceIntTag, Config.DefaultForce ? 2 : 1) == 2; }
+        }
+
+        /// <summary>
+        /// 读三态 int tag：0 / 不存在 = 从未设置，返回 fallback。
+        /// 不用 IsTag 判存在性 —— 它等价于 IsEnabled()，被 Disable 过就查不到。
+        /// </summary>
+        private int ReadThreeState(string tag, int fallback)
+        {
+            if (Machine == null) return fallback;
+            try
             {
-                if (Machine != null && Machine.IsTag(WineTags.ForceTierTag))
-                    return Machine.GetTagReadonly(WineTags.ForceTierTag).IsEnabled();
-                return Config.DefaultForce;
+                int v = Machine.GetTagReadonly(tag).GetInt();
+                return v == 0 ? fallback : v;
+            }
+            catch (Exception)
+            {
+                return fallback;
             }
         }
 
@@ -274,14 +282,15 @@ namespace BrewingConvenience
 
         public void ToggleYeast()
         {
-            bool next = !UseYeast;
-            Machine.ModifyTag(WineTags.UseYeastTag, st => { if (next) st.Enable(); else st.Disable(); }, false);
+            int next = UseYeast ? 1 : 2;
+            Machine.ModifyTag(WineTags.UseYeastIntTag, st => { st.Enable(); st.SetInt(next); }, false);
             RefreshButtons();
         }
 
         public void SetForce(bool force)
         {
-            Machine.ModifyTag(WineTags.ForceTierTag, st => { if (force) st.Enable(); else st.Disable(); }, false);
+            int next = force ? 2 : 1;
+            Machine.ModifyTag(WineTags.ForceIntTag, st => { st.Enable(); st.SetInt(next); }, false);
             RefreshButtons();
         }
 
@@ -346,15 +355,14 @@ namespace BrewingConvenience
                 string value;
                 if (brewed > 0)
                 {
-                    value = reason == null && madeTier >= 0
-                        ? brewed + "→" + WineTags.TierNameByTier(madeTier)
-                        : brewed + " · " + reason;
+                    value = brewed + " " + ShortTier(madeTier);
+                    if (reason != null) value += " " + reason;
                 }
                 else
                 {
-                    value = reason ?? Loc.Get("hint_nothing_brew", "材料不足");
+                    value = reason ?? Loc.Get("hint_nothing_brew", "缺料");
                 }
-                SetText(HintText, value);
+                SetText(HintText, Clip(value, 12));
             }
 
             RefreshButtons();
@@ -373,12 +381,12 @@ namespace BrewingConvenience
             GameItem water = Water();
             if (water == null)
             {
-                reason = Loc.Get("why_water_container", "缺水容器");
+                reason = Loc.Get("why_water_container", "缺水");
                 return false;
             }
             if (WaterHelper.GetCurrentCapacityML(water) < WineTags.BottleMl)
             {
-                reason = Loc.Get("why_water", "水量不足 750ml");
+                reason = Loc.Get("why_water", "水量不足");
                 return false;
             }
 
@@ -391,7 +399,7 @@ namespace BrewingConvenience
 
             if (FermentBin.childItems.Count >= MaxConcurrentBottles)
             {
-                reason = Loc.Get("why_ferment_full", "发酵区已满");
+                reason = Loc.Get("why_ferment_full", "发酵满");
                 return false;
             }
 
@@ -417,11 +425,14 @@ namespace BrewingConvenience
             {
                 if (force)
                 {
-                    reason = Loc.Get("why_tier_locked", "达不到目标档位");
+                    reason = Loc.Get("why_tier_locked", "够不到");
                     return false;
                 }
 
-                for (int t = targetTier - 1; t >= MinFallbackTier; t--)
+                // 目标档本身低于底限时（例如玩家主动选"手工自酿"），底限跟着下调，
+                // 否则优先模式会连目标档都够不到就直接罢工。
+                int floor = Math.Min(MinFallbackTier, targetTier);
+                for (int t = targetTier - 1; t >= floor; t--)
                 {
                     pair = FindPairForTier(Berries(), baseBonus, waterScore, t);
                     if (pair != null)
@@ -433,7 +444,7 @@ namespace BrewingConvenience
 
                 if (pair == null)
                 {
-                    reason = Loc.Get("why_berry", "没有合适的葡萄");
+                    reason = Loc.Get("why_berry", "无合适果");
                     return false;
                 }
             }
@@ -594,6 +605,41 @@ namespace BrewingConvenience
             }
         }
 
+        /// <summary>档位短名（只有两个字，塞得进状态行）。</summary>
+        private static string ShortTier(int tier)
+        {
+            switch (tier)
+            {
+                case 5: return Loc.Get("tier5_s", "琼浆");
+                case 4: return Loc.Get("tier4_s", "臻品");
+                case 3: return Loc.Get("tier3_s", "量产");
+                case 2: return Loc.Get("tier2_s", "自酿");
+                case 1: return Loc.Get("tier1_s", "粗桶");
+                default: return Loc.Get("tier0_s", "劣酿");
+            }
+        }
+
+        /// <summary>
+        /// 按"显示宽度"截断（中文算 2、ASCII 算 1，上限 weight）。
+        /// 状态行是自然宽度的文本，字一多整块控制面板就会变宽、把窗口撑大，
+        /// 所以宁可截断也不让它无限长。中英文用同一套权重，两边都不会超宽。
+        /// </summary>
+        private static string Clip(string text, int weight)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            int used = 0;
+            int cut = 0;
+            for (; cut < text.Length; cut++)
+            {
+                used += text[cut] > 0x7F ? 2 : 1;
+                if (used > weight) break;
+            }
+
+            if (cut >= text.Length) return text;
+            return text.Substring(0, Math.Max(1, cut - 1)) + "…";
+        }
+
         private static void SetText(MachineryText text, string value)
         {
             try { text.SetText(value); } catch { }
@@ -608,11 +654,17 @@ namespace BrewingConvenience
         }
 
         /// <summary>可用于酿酒的葡萄：正常果区 + 小果区（其他果区不参与）。</summary>
+        /// <summary>
+        /// 参与酿酒的全部葡萄：正常果 / 小果 / 其他果。
+        /// 其他果区装的是次品（未熟/干枯/发霉），它们的分值是 0 或负，只有目标档位很低时才会被选中 ——
+        /// 所以放开不会污染高档酒，但让"手工自酿""粗桶劣酿""难以下咽"这几档真正可达。
+        /// </summary>
         private List<BerryPick> Berries()
         {
             var result = new List<BerryPick>();
             Collect(NormalBin, result);
             Collect(SmallBin, result);
+            Collect(OtherBin, result);
             return result;
         }
 
@@ -620,7 +672,7 @@ namespace BrewingConvenience
         {
             if (bin == null) return;
             foreach (GameItem item in bin.childItems)
-                if (WineTags.IsBrewableBerry(item))
+                if (WineTags.IsBerry(item))
                     sink.Add(new BerryPick { Item = item, Bin = bin, Value = WineTags.BerryValue(item) });
         }
 

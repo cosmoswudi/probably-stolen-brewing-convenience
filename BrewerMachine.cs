@@ -73,24 +73,29 @@ namespace BrewingConvenience
                 && WineTags.IsOwned(item);
 
             // ── 控件 ───────────────────────────────────────────────────
-            var sortButton = new MachineryButton(Loc.Get("btn_sort", "分拣"), null, 50, 22);
-            var brewButton = new MachineryButton(Loc.Get("btn_brew", "开酿"), null, 50, 22);
+            // 按钮文字字号是原版固定值 7px，所以宽度按"字符数×7 + 留白"给就够了：
+            // 之前给 50/86/46/40 太大，既占地方又把控制面板撑宽。
+            var sortButton = new MachineryButton(Loc.Get("btn_sort", "分拣"), null, 42, 22);
+            var brewButton = new MachineryButton(Loc.Get("btn_brew", "开酿"), null, 42, 22);
 
             // 目标档位：点一下降一档（琼浆玉液 → … → 难以下咽 → 回到琼浆玉液）
-            var targetButton = new MachineryButton("", null, 86, 22);
+            // 六个档位名都是四个汉字（"目标:XXXX" = 7 字符 ≈ 49px），58 够用。
+            var targetButton = new MachineryButton("", null, 58, 22);
             // 酵母开关：开 = 必须放酵母；关 = 不放（少 1 分，4 个夜晚出酒）
-            var yeastButton = new MachineryButton("", null, 46, 22);
-            // 执行类别：强制 / 优先
-            var forceButton = new MachineryButton("", null, 40, 22);
-            var priorityButton = new MachineryButton("", null, 40, 22);
+            var yeastButton = new MachineryButton("", null, 36, 22);
+            // 执行类别：强制 / 优先（选中那个加方括号 = 4 字符 ≈ 28px，32 够）
+            var forceButton = new MachineryButton("", null, 32, 22);
+            var priorityButton = new MachineryButton("", null, 32, 22);
 
             units.TargetButton = targetButton;
             units.YeastButton = yeastButton;
             units.ForceButton = forceButton;
             units.PriorityButton = priorityButton;
 
-            // 操作反馈用纯文本（没有标签列），才塞得进按钮同一行
-            units.HintText = new MachineryText("—", 10, HorizontalAlignmentOptions.Left, false);
+            // 操作反馈用纯文本（没有标签列），才塞得进按钮同一行。
+            // 字号必须小 + 文字必须短：这一行是自然宽度，字一多整块控制面板就会变宽，
+            // 玩家看到的就是"一点开酿，机器 UI 横向长大一圈"。
+            units.HintText = new MachineryText("—", 8, HorizontalAlignmentOptions.Left, false);
 
             // ── 原版那种「小纸条」说明书 ───────────────────────────────
             // 注意：便签不能在 Create() 里塞进槽位。工厂函数必须产出"干净"的机器，
@@ -257,7 +262,8 @@ namespace BrewingConvenience
             "「强制 / 优先」：强制 = 最终分值必须落在目标档，差一分都不酿；优先 = 先按目标档酿，凑不出就自动往下降一档，最低只降到量产酒液。\n\n" +
             "【配比】\n" +
             "两颗葡萄分值之和 + 1（≥2 颗）+ 1（有酵母）+ 水质分。\n" +
-            "优质水 +1，基础水 0，幽灵水及以下为负。\n\n" +
+            "优质水 +1，基础水 0，幽灵水及以下为负。\n" +
+            "三个果区都会取用：正常果 / 小果酿高档；其他果（未熟·干枯·发霉）分值低，只会在低档时被选中。\n\n" +
             "【用法】\n" +
             "葡萄丢进投放区 → 分拣 → 放空瓶、酵母、一个装水的容器 → 开酿。发酵区最多同时 8 瓶。\n\n" +
             "注意：卖掉或丢掉这台机器，里面的东西会一起消失。</size>";

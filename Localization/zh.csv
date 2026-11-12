@@ -15,17 +15,17 @@ status_best,当前可酿最优
 status_ferment,发酵中
 status_ready,成品
 hint_label,操作
-hint_sorted,已分拣
+hint_sorted,分拣
 hint_brew,已开酿
-hint_full,满了
-hint_nothing,没有可分的葡萄
-hint_nothing_brew,材料不足
-why_water_container,缺水容器
-why_water,水不够
+hint_full,满
+hint_nothing,无可分葡萄
+hint_nothing_brew,缺料
+why_water_container,缺水
+why_water,水量不足
 why_bad_water,水质太差
 why_bottle,缺空酒瓶
 why_yeast,缺酵母
-why_berry,没有合适的两颗葡萄
+why_berry,无合适果
 why_put_fail,装瓶失败
 q_master,琼浆玉液
 q_reserve,臻品窖藏
@@ -37,7 +37,7 @@ q_no_water_container,缺水容器
 q_water_low,水量不足
 cfg_target,目标是臻品窖藏（5 分）
 cfg_target_tip,关闭 = 酿琼浆玉液（6 分）；打开 = 酿臻品窖藏（恰好 5 分）
-why_ferment_full,发酵区已满
+why_ferment_full,发酵满
 q_need_berry,需要两颗葡萄
 panel_help,使用说明
 help_l1,① 葡萄丢进投放区
@@ -54,4 +54,10 @@ ui_yeast_on,酵母 开
 ui_yeast_off,酵母 关
 ui_force,强制
 ui_priority,优先
-why_tier_locked,够不到目标档
+why_tier_locked,够不到
+tier5_s,琼浆
+tier4_s,臻品
+tier3_s,量产
+tier2_s,自酿
+tier1_s,粗桶
+tier0_s,劣酿

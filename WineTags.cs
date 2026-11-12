@@ -24,9 +24,14 @@ namespace BrewingConvenience
         public const string IllegalYeast = "WINE_YEAST_ILLEGAL_TAG";
 
         // ── 每台机器的设置（存机器自己的 tag，随存档走）──
-        public const string TargetTierTag = "BREW_TARGET_TIER_INT";   // 5..0
-        public const string UseYeastTag = "BREW_USE_YEAST_TAG";       // 有 = 必须放酵母
-        public const string ForceTierTag = "BREW_FORCE_TIER_TAG";     // 有 = 强制，无 = 优先
+        //
+        // ★ 布尔开关不能用 tag 的 enabled 位存：GameItem.IsTag() 的实现是
+        //   `return state.IsEnabled()`，Disable() 之后 IsTag 直接变 false，
+        //   读取时就分不清"玩家关了"和"从没设置过"，开关永远切不过去。
+        //   所以一律用 int 值：0 = 从未设置（回落到 Config 默认值），非 0 才是玩家的选择。
+        public const string TargetTierTag  = "BREW_TARGET_TIER_INT";  // 0..5，缺失走默认
+        public const string UseYeastIntTag = "BREW_USE_YEAST_INT";    // 0 未设置 / 1 关 / 2 开
+        public const string ForceIntTag    = "BREW_FORCE_INT";        // 0 未设置 / 1 优先 / 2 强制
         public const string LiquidContainer = "LIQUID_CONTAINER_TAG";
         public const string IgnoreChildValue = "IGNORE_CHILD_VALUE";
 

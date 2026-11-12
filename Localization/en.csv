@@ -17,16 +17,16 @@ status_ready,Ready
 hint_label,Action
 hint_sorted,Sorted
 hint_brew,Started
-hint_full,bins full
-hint_nothing,No grapes to sort
-hint_nothing_brew,Not enough material
-why_water_container,No water container
-why_water,Not enough water
+hint_full,Full
+hint_nothing,No grapes
+hint_nothing_brew,No mats
+why_water_container,No water
+why_water,Low water
 why_bad_water,Water quality too low
-why_bottle,No empty bottle
+why_bottle,No bottle
 why_yeast,No yeast
-why_berry,No valid grape pair
-why_put_fail,Could not fill bottle
+why_berry,No grapes
+why_put_fail,Bottle fail
 q_master,Master Vintage
 q_reserve,Reserve Vintage
 q_production,Production Wine
@@ -37,7 +37,7 @@ q_no_water_container,No water container
 q_water_low,Not enough water
 cfg_target,Target: Reserve Vintage (score 5)
 cfg_target_tip,Off = Master Vintage (score 6). On = Reserve Vintage (exactly 5).
-why_ferment_full,Fermenting area full
+why_ferment_full,Full
 q_need_berry,Need two grapes
 panel_help,How to use
 help_l1,1. Grapes -> Intake
@@ -54,4 +54,10 @@ ui_yeast_on,Yeast ON
 ui_yeast_off,Yeast OFF
 ui_force,Force
 ui_priority,Prefer
-why_tier_locked,Target unreachable
+why_tier_locked,Too low
+tier5_s,Master
+tier4_s,Reserve
+tier3_s,Table
+tier2_s,Home
+tier1_s,Rough
+tier0_s,Swill
