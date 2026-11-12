@@ -209,7 +209,7 @@ namespace BrewingConvenience
                 string value = Loc.Get("hint_sorted", "分拣") + " " + moved;
                 if (full > 0) value += " " + Loc.Get("hint_full", "满") + full;
                 if (moved == 0 && full == 0) value = Loc.Get("hint_nothing", "无可分葡萄");
-                SetText(HintText, Clip(value, 12));
+                SetText(HintText, Clip(value, 14));
             }
 
             Refresh();
@@ -362,7 +362,7 @@ namespace BrewingConvenience
                 {
                     value = reason ?? Loc.Get("hint_nothing_brew", "缺料");
                 }
-                SetText(HintText, Clip(value, 12));
+                SetText(HintText, Clip(value, 14));
             }
 
             RefreshButtons();

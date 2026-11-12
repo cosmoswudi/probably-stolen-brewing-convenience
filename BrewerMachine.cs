@@ -95,7 +95,7 @@ namespace BrewingConvenience
             // 操作反馈用纯文本（没有标签列），才塞得进按钮同一行。
             // 字号必须小 + 文字必须短：这一行是自然宽度，字一多整块控制面板就会变宽，
             // 玩家看到的就是"一点开酿，机器 UI 横向长大一圈"。
-            units.HintText = new MachineryText("—", 8, HorizontalAlignmentOptions.Left, false);
+            units.HintText = new MachineryText("—", 7, HorizontalAlignmentOptions.Left, false);
 
             // ── 原版那种「小纸条」说明书 ───────────────────────────────
             // 注意：便签不能在 Create() 里塞进槽位。工厂函数必须产出"干净"的机器，
@@ -123,10 +123,22 @@ namespace BrewingConvenience
                 forceButton, priorityButton, units.HintText
             });
 
+            // 表格把每块面板拉到列宽（= 8 格 = 128px），但面板里的内容是自然宽度、默认居中，
+            // 于是右边会空出一条。这里做两件事把空间吃满：
+            //   ① 三行统一左对齐（Aligh.Start），和左边格子对齐
+            //   ② 把提示文字设为 stretch —— 它会吃掉按钮右边的全部剩余宽度，
+            //      而且宽度固定后，文字变长也不会再把窗口撑宽（之前的"一点开酿 UI 就变宽"）
+            modeRow.SetMainAlign(MachineryStack.Align.Start);
+            modeRow.SetStretch(units.HintText);
+
+            buttonsRow.SetMainAlign(MachineryStack.Align.Start);
+            optionRow.SetMainAlign(MachineryStack.Align.Start);
+
             var control = MachineryStack.Vertical(new PixelElement[]
             {
                 buttonsRow, optionRow, modeRow
             });
+            control.SetAlign(MachineryStack.Align.Start);
 
             // 酵母和储水都很小，合成一块面板，面板总数才能压到 8 个 → 正好两排
             MachineryStack supplies = MachineryStack.Horizontal(new PixelElement[]
