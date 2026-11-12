@@ -54,10 +54,12 @@ ui_yeast_on,酵母 开
 ui_yeast_off,酵母 关
 ui_force,强制
 ui_priority,优先
-why_tier_locked,够不到
+why_tier_locked,果不够
 tier5_s,琼浆
 tier4_s,臻品
 tier3_s,量产
 tier2_s,自酿
 tier1_s,粗桶
 tier0_s,劣酿
+why_no_berry,缺果
+unit_bottle,瓶

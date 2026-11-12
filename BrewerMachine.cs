@@ -258,6 +258,7 @@ namespace BrewingConvenience
             units.GrapeInput.onSlotAddItemEndFunc = (i, inv, slot) =>
             {
                 units.RouteFromIntake();
+                units.ClearHint();   // 有新料进来，上次的开酿结果就作废了
                 units.Refresh();
             };
 

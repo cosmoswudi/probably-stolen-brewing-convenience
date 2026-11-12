@@ -25,7 +25,7 @@ why_water,Low water
 why_bad_water,Water quality too low
 why_bottle,No bottle
 why_yeast,No yeast
-why_berry,No grapes
+why_berry,No fit
 why_put_fail,Bottle fail
 q_master,Master Vintage
 q_reserve,Reserve Vintage
@@ -54,10 +54,12 @@ ui_yeast_on,Yeast ON
 ui_yeast_off,Yeast OFF
 ui_force,Force
 ui_priority,Prefer
-why_tier_locked,Too low
+why_tier_locked,Fruit too low
 tier5_s,Master
 tier4_s,Reserve
 tier3_s,Table
 tier2_s,Home
 tier1_s,Rough
 tier0_s,Swill
+why_no_berry,No fruit
+unit_bottle,

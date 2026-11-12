@@ -71,6 +71,21 @@ namespace BrewingConvenience
             }
         }
 
+        /// <summary>
+        /// 清空操作提示。玩家一往投放区丢新葡萄就调用 ——
+        /// 否则上次那句"1瓶琼浆 缺果"会一直挂在面板上，看着像当前状态。
+        /// </summary>
+        public void ClearHint()
+        {
+            try
+            {
+                if (HintText == null) return;
+                if (HintText.GetText() == "—") return;
+                HintText.SetText("—");
+            }
+            catch (Exception) { }
+        }
+
         // ─────────────────────────────────────────────────── 投放区分流
 
         private bool _routing;
@@ -355,7 +370,7 @@ namespace BrewingConvenience
                 string value;
                 if (brewed > 0)
                 {
-                    value = brewed + " " + ShortTier(madeTier);
+                    value = brewed + Loc.Get("unit_bottle", "瓶") + ShortTier(madeTier);
                     if (reason != null) value += " " + reason;
                 }
                 else
@@ -418,14 +433,20 @@ namespace BrewingConvenience
             int waterScore = WineTags.WaterScoreOf(water);
             int baseBonus = 1 + (useYeast ? 1 : 0);   // 果子数加成 + 酵母加成
 
-            List<BerryPick> pair = FindPairForTier(Berries(), baseBonus, waterScore, targetTier);
+            // 一次取齐候选，后面反复比对不用重复遍历三个果区
+            List<BerryPick> candidates = Berries();
+            List<BerryPick> pair = FindPairForTier(candidates, baseBonus, waterScore, targetTier);
             madeTier = targetTier;
 
             if (pair == null)
             {
                 if (force)
                 {
-                    reason = Loc.Get("why_tier_locked", "够不到");
+                    // 分清两种情况：果区里根本没两颗果子 / 有果子但分值凑不到这一档。
+                    // 之前统一报"够不到"，玩家会以为机器坏了。
+                    reason = candidates.Count < 2
+                        ? Loc.Get("why_no_berry", "缺果")
+                        : Loc.Get("why_tier_locked", "果不够");
                     return false;
                 }
 
@@ -434,7 +455,7 @@ namespace BrewingConvenience
                 int floor = Math.Min(MinFallbackTier, targetTier);
                 for (int t = targetTier - 1; t >= floor; t--)
                 {
-                    pair = FindPairForTier(Berries(), baseBonus, waterScore, t);
+                    pair = FindPairForTier(candidates, baseBonus, waterScore, t);
                     if (pair != null)
                     {
                         madeTier = t;
@@ -444,7 +465,9 @@ namespace BrewingConvenience
 
                 if (pair == null)
                 {
-                    reason = Loc.Get("why_berry", "无合适果");
+                    reason = candidates.Count < 2
+                        ? Loc.Get("why_no_berry", "缺果")
+                        : Loc.Get("why_berry", "无合适果");
                     return false;
                 }
             }
