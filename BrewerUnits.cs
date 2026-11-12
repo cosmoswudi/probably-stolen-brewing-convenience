@@ -367,17 +367,22 @@ namespace BrewingConvenience
 
             if (HintText != null)
             {
+                // 只报"结果"或"卡住的原因"，不报瓶数 —— 瓶数玩家看发酵区就知道，
+                // 而这一行宽度有限，混在一起会变成 "2量产 缺空…" 这种谁也读不懂的碎片。
                 string value;
-                if (brewed > 0)
+                if (reason != null)
                 {
-                    value = brewed + Loc.Get("unit_bottle", "瓶") + ShortTier(madeTier);
-                    if (reason != null) value += " " + reason;
+                    value = reason;
+                }
+                else if (brewed > 0)
+                {
+                    value = ShortTier(madeTier);
                 }
                 else
                 {
-                    value = reason ?? Loc.Get("hint_nothing_brew", "缺料");
+                    value = Loc.Get("hint_nothing_brew", "缺料");
                 }
-                SetText(HintText, Clip(value, 14));
+                SetText(HintText, value);
             }
 
             RefreshButtons();

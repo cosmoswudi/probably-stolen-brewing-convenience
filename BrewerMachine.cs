@@ -189,6 +189,24 @@ namespace BrewingConvenience
 
                 window = new PixelWindow(true, Loc.Get("machine_name", "酿酒便利机"), WindowStyle.Machinery);
                 window.Attach(root);
+
+                // 两排是独立的 stack，各自按内容宽度排版后居中 —— 第二排的酵母/储水（3x3+4x4）
+                // 和控制面板内容都比 8 格窄，整排就比第一排瘦，左右各缩进一条（就是截图里的两个红圈）。
+                // 挂载后按第一排实测宽度把第二排四块逐一对齐，两排就完全等宽了。
+                try
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int w = panels[i].widthPixels;
+                        if (w > 0) panels[4 + i].SetMinWidth(w);
+                    }
+                    root.Validate();
+                    window.Validate();
+                }
+                catch (Exception)
+                {
+                    // 拿不到实测宽度就保持原样，只是右边略窄，不影响功能
+                }
             }
             catch (Exception e)
             {
