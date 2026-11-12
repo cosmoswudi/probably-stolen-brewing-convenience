@@ -3,7 +3,7 @@
   <ID>brewing_convenience</ID>
   <Name>酿酒便利化</Name>
   <Author>XJia</Author>
-  <ModVersion>1.1.4</ModVersion>
+  <ModVersion>1.1.5</ModVersion>
   <Description>一台自动分拣葡萄、自动配比、自动灌水并批量发酵的酿酒机器。</Description>
   <GameVersions />
   <Prerequisites />

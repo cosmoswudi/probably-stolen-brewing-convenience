@@ -118,9 +118,35 @@ namespace BrewingConvenience
             return item != null && GeneralHelper.IsItemOwned(item);
         }
 
+        /// <summary>
+        /// 真正的"空酒瓶"。
+        /// ★ 必须排除装了液体的瓶子：装了水的啤酒瓶 WINE_CONTAINER_STATE 仍然是 0（空），
+        ///   只按状态判断的话它会冒充空瓶被塞进空瓶区，水区永远收不到水，
+        ///   开酿时会提示"缺水"却看不出原因。
+        /// </summary>
         public static bool IsEmptyBottle(GameItem item)
         {
-            return item != null && item.IsTag(Container) && WineState(item) == StateEmpty;
+            return item != null
+                && item.IsTag(Container)
+                && WineState(item) == StateEmpty
+                && !HasLiquid(item);
+        }
+
+        /// <summary>
+        /// 能不能当水源：装了液体，且不是发酵中/已成品酒瓶。
+        /// 成品酒和发酵中的瓶子也带液体，但它们不该被吸进储水区。
+        /// </summary>
+        public static bool IsWaterSource(GameItem item)
+        {
+            return HasLiquid(item) && WineState(item) == StateEmpty;
+        }
+
+        /// <summary>容器里有没有液体。非液体容器一律 false。</summary>
+        public static bool HasLiquid(GameItem item)
+        {
+            if (item == null || !item.IsTag(LiquidContainer)) return false;
+            try { return WaterHelper.GetCurrentCapacityML(item) > 0; }
+            catch (Exception) { return false; }
         }
 
         public static bool IsYeast(GameItem item)

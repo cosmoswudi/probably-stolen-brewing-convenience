@@ -108,6 +108,7 @@ namespace BrewingConvenience
 
                     GameGridInventory target = null;
                     if (WineTags.IsYeast(item)) target = YeastBin;
+                    else if (WineTags.IsWaterSource(item)) target = WaterBin;          // 先认"装了液体的容器"
                     else if (WineTags.IsEmptyBottle(item)) target = BottleBin;
                     else if (item.IsTag(WineTags.LiquidContainer)) target = WaterBin;
                     if (target == null) continue;
@@ -137,6 +138,8 @@ namespace BrewingConvenience
             if (item == null) return false;
             if (WineTags.IsBerry(item)) return true;
             if (WineTags.IsYeast(item)) return true;
+            if (WineTags.IsWaterSource(item))
+                return WaterBin != null && WaterBin.childItems.Count == 0;
             if (WineTags.IsEmptyBottle(item)) return true;
             if (item.IsTag(WineTags.LiquidContainer))
                 return WaterBin != null && WaterBin.childItems.Count == 0;
@@ -152,6 +155,7 @@ namespace BrewingConvenience
 
                 if (WineTags.IsBerry(item)) target = GrapeInput;
                 else if (WineTags.IsYeast(item)) target = YeastBin;
+                else if (WineTags.IsWaterSource(item)) target = WaterBin;              // 装了液体的容器优先
                 else if (WineTags.IsEmptyBottle(item)) target = BottleBin;
                 else if (item != null && item.IsTag(WineTags.LiquidContainer)) target = WaterBin;
 

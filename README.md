@@ -268,7 +268,21 @@ item.IsTag(tag)                                    // → false
 
 `wine_yeast_red` 带 `WINE_YEAST_ILLEGAL_TAG`，`StartFermentation` 遇到它会把整瓶标记成假酒并把分值强制成 3——精心配的 6 分葡萄全废。选酵母时要 `IsYeast && !IsIllegalYeast`。
 
-### 15. 状态行是"自然宽度"，字一多窗口就变宽
+### 15. 空瓶判定必须排除"装了液体"的瓶子
+
+`IsEmptyBottle` 原本只看 `WINE_CONTAINER_TAG` + `WINE_CONTAINER_STATE == 0`。但**装了水的啤酒瓶状态仍然是 0**，于是它会被判成空瓶塞进空瓶区，水区永远收不到水，开酿时只提示"缺水"却看不出原因。
+
+正确顺序是先把"装了液体且未发酵"的容器认作水源（`IsWaterSource`），再判空瓶：
+
+```csharp
+if (IsWaterSource(item))  → 水区     // 装水的瓶子、水壶
+else if (IsEmptyBottle(item)) → 空瓶区 // 必须是 HasLiquid == false
+else if (item.IsTag(LiquidContainer)) → 水区
+```
+
+`IsEmptyBottle` 里加 `&& !HasLiquid(item)`。三处分发（投放区准入、`RouteFromIntake`、`Take`）都要保持同一顺序。
+
+### 16. 状态行是"自然宽度"，字一多窗口就变宽
 
 控制面板里的 `MachineryText` 宽度 = 文字自然宽度。一旦提示文字变长（"已酿 8 → 琼浆玉液"），整块控制面板被撑宽，玩家看到的就是"一点开酿，机器 UI 横向长大一圈"。
 
@@ -276,7 +290,7 @@ item.IsTag(tag)                                    // → false
 
 面板里的内容默认是**居中**的，而表格会把面板拉到列宽（8 格 = 128px），所以右边会空出一条。用 `MachineryStack.SetMainAlign(Align.Start)` 左对齐、再用 `SetStretch(hintText)` 让提示吃掉按钮右侧的剩余宽度，内容才真正铺满。
 
-### 16. 本地化
+### 17. 本地化
 
 `Localization/<lang>.csv`，无表头，格式 `key,value`。CSV 存不了多行文本，说明书正文写在代码常量里。取不到时用 `Loc.Get(key, fallback)` 的兜底串，不会出现裸 key。
 

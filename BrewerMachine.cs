@@ -30,7 +30,7 @@ namespace BrewingConvenience
             units.SmallBin = new GameGridInventory(8, 8);   // 3 小果
             units.OtherBin = new GameGridInventory(8, 8);   // 4 其他果
             units.BottleBin = new GameGridInventory(8, 4);  // 5 空酒瓶（横版 8 列 × 4 行 = 8 瓶）
-            units.YeastBin = new GameGridInventory(3, 3);   // 6 酵母
+            units.YeastBin = new GameGridInventory(3, 4);   // 6 酵母（3 列 × 4 行，1x2 的酵母能放 6 个）
             units.WaterBin = new GameGridInventory(4, 4);   // 7 储水（只放一个容器）
             units.FermentBin = new GameGridInventory(8, 4); // 8 发酵中 / 成品（横版 8 瓶）
 
@@ -46,6 +46,12 @@ namespace BrewingConvenience
                 // 非葡萄的物品只是"路过"投放区：目标区域放不下就直接拒收，
                 // 否则它会被迫留在投放区里占着葡萄的位置。
                 if (WineTags.IsYeast(item)) return GraphUtils.CanAccept(units.YeastBin, item);
+
+                // 装了液体的容器必须先判 —— 装了水的啤酒瓶也带 WINE_CONTAINER_TAG，
+                // 交给 IsEmptyBottle 会被当成空瓶塞进空瓶区。
+                if (WineTags.IsWaterSource(item))
+                    return units.WaterBin.childItems.Count == 0 && GraphUtils.CanAccept(units.WaterBin, item);
+
                 if (WineTags.IsEmptyBottle(item)) return GraphUtils.CanAccept(units.BottleBin, item);
                 if (item.IsTag(WineTags.LiquidContainer))
                     return units.WaterBin.childItems.Count == 0 && GraphUtils.CanAccept(units.WaterBin, item);
