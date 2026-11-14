@@ -63,3 +63,15 @@ tier1_s,粗桶
 tier0_s,劣酿
 why_no_berry,缺果
 unit_bottle,瓶
+panel_battery,电池
+panel_core,芯片
+btn_print,打印
+btn_print_fill,填满
+chip_both,已全解锁
+chip_auto,自动
+chip_print,打印
+why_print_locked,未解锁打印
+hint_printed,打印
+why_battery,缺电池
+why_bottle_area_full,瓶区满
+why_power_low,电量不足

@@ -9,7 +9,7 @@ namespace BrewingConvenience
     /// 每次工厂函数执行都会新建一份，UI 回调通过闭包持有它 —— 不使用任何静态状态，
     /// 这样读档重建时不会串台，多台机器也能各自独立工作。
     /// </summary>
-    internal sealed class BrewerUnits
+    internal sealed partial class BrewerUnits
     {
         public GameItem Machine;
         public GameGridInventory GrapeInput;

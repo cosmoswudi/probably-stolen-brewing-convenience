@@ -63,3 +63,15 @@ tier1_s,Rough
 tier0_s,Swill
 why_no_berry,No fruit
 unit_bottle,
+panel_battery,Battery
+panel_core,Chip
+btn_print,Print
+btn_print_fill,Fill
+chip_both,All unlocked
+chip_auto,Auto
+chip_print,Print
+why_print_locked,Print locked
+hint_printed,Printed
+why_battery,No battery
+why_bottle_area_full,Bottles full
+why_power_low,Low power

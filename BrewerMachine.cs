@@ -34,6 +34,20 @@ namespace BrewingConvenience
             units.WaterBin = new GameGridInventory(4, 4);   // 7 储水（只放一个容器）
             units.FermentBin = new GameGridInventory(8, 4); // 8 发酵中 / 成品（横版 8 瓶）
 
+            // ── 9 / 10：电池槽、芯片槽 ─────────────────────────────────
+            // 放在 8 个区域之后创建，旧存档的前 8 个坐标不受影响。
+            units.BatterySlot = new GameSlotInventory();
+            units.BatterySlot.mayInventoryAddItemFunc = (item, inv) => WineTags.IsBattery(item);
+
+            units.CoreSlot = new GameSlotInventory();
+            units.CoreSlot.mayInventoryAddItemFunc = (item, inv) =>
+                item != null && item.IsID(WineTags.CoreItemId);
+            units.CoreSlot.onSlotAddItemEndFunc = (item, inv, slot) =>
+            {
+                units.BindCore(item);       // 挂"能接收金属锭/电子元件"的回调
+                units.RefreshUpgradeText();
+            };
+
             // ── 各区域只收该收的东西 ───────────────────────────────────
             // 葡萄只能拖进「投放区」；正常/小/其他三个输出区平时一律拒绝手动放入，
             // 只有点「分拣」时（units.Sorting = true）机器自己才写得进去。
@@ -146,6 +160,26 @@ namespace BrewingConvenience
             });
             control.SetAlign(MachineryStack.Align.Start);
 
+            // ── 左列：电池 / 芯片 / 打印按钮 / 升级进度 ──────────────────
+            var batteryPanel = MachineHelper.Panel(
+                Loc.Get("panel_battery", "电池"), Plain(units.BatterySlot), "battery", false);
+            var corePanel = MachineHelper.Panel(
+                Loc.Get("panel_core", "芯片"), Plain(units.CoreSlot), "core", false);
+
+            // 列宽只有 2 格（32px），按钮文字必须两个字
+            var printOneButton = new MachineryButton(Loc.Get("btn_print", "打印"), null, 34, 22);
+            var printFillButton = new MachineryButton(Loc.Get("btn_print_fill", "填满"), null, 34, 22);
+            printOneButton.SetCallback(() => units.PrintOne());
+            printFillButton.SetCallback(() => units.PrintFill());
+
+            units.UpgradeText = new MachineryText("0/9 0/12", 6, HorizontalAlignmentOptions.Left, false);
+
+            var leftColumn = MachineryStack.Vertical(new PixelElement[]
+            {
+                batteryPanel, corePanel, printOneButton, printFillButton, units.UpgradeText
+            });
+            leftColumn.SetAlign(MachineryStack.Align.Start);
+
             // 酵母和储水都很小，合成一块面板，面板总数才能压到 8 个 → 正好两排
             MachineryStack supplies = MachineryStack.Horizontal(new PixelElement[]
             {
@@ -191,7 +225,11 @@ namespace BrewingConvenience
                     panels[4], panels[5], panels[6], panels[7]
                 });
 
-                MachineryStack root = MachineryStack.Vertical(new PixelElement[] { topRow, bottomRow });
+                // 左列（电池/芯片/打印）挨在右边两排的左侧；整窗宽度会多出约 40px，
+                // 这是"把芯片和电池放进面板"的唯一代价 —— 放下面会把第二排顶高。
+                MachineryStack right = MachineryStack.Vertical(new PixelElement[] { topRow, bottomRow });
+                MachineryStack root = MachineryStack.Horizontal(new PixelElement[] { leftColumn, right });
+                root.SetAlign(MachineryStack.Align.Start);
 
                 window = new PixelWindow(true, Loc.Get("machine_name", "酿酒便利机"), WindowStyle.Machinery);
                 window.Attach(root);
@@ -239,6 +277,7 @@ namespace BrewingConvenience
 
             // ── 交互 ───────────────────────────────────────────────────
             units.Machine = machine;
+            BrewerUnits.Register(machine, units);   // 夜间自动酿酒靠这张表找回实例
             sortButton.SetCallback(() => units.Sort());
             brewButton.SetCallback(() => units.Brew());
             targetButton.SetCallback(() => units.CycleTier());
@@ -254,9 +293,11 @@ namespace BrewingConvenience
 
             units.RefreshButtons();
 
+            // 电池/芯片可能是在关窗状态下被拖走或换掉的，开窗时补一次
             window.openCallback = () =>
             {
                 EnsureManual(noteSlot);
+                units.RefreshUpgradeText();
                 units.Refresh(true);
             };
             machine.onLoaded = m => EnsureManual(noteSlot);
@@ -301,6 +342,12 @@ namespace BrewingConvenience
             "两颗葡萄分值之和 + 1（≥2 颗）+ 1（有酵母）+ 水质分。\n" +
             "优质水 +1，基础水 0，幽灵水及以下为负。\n" +
             "三个果区都会取用：正常果 / 小果酿高档；其他果（未熟·干枯·发霉）分值低，只会在低档时被选中。\n\n" +
+            "【电池 / 芯片】\n" +
+            "左边一列：电池槽放原版电池；芯片槽放「售卖机核心」。\n" +
+            "把金属锭或电子元件直接拖到芯片上就能升级，进度显示在下方。\n" +
+            "9 个金属锭 → 解锁夜间自动酿酒：每晚消耗 4 kJ，入睡时自动分拣并酿满发酵区。\n" +
+            "12 个电子元件 → 解锁酒瓶打印：每瓶 8 kJ，「打印」出一个，「填满」补到 8 个。\n" +
+            "没电时自动酿酒会安静跳过，手动开酿不受电量影响。\n\n" +
             "【用法】\n" +
             "葡萄丢进投放区 → 分拣 → 放空瓶、酵母、一个装水的容器 → 开酿。发酵区最多同时 8 瓶。\n\n" +
             "注意：卖掉或丢掉这台机器，里面的东西会一起消失。</size>";
@@ -340,7 +387,7 @@ namespace BrewingConvenience
         /// 「通风格栅」的外壳，面板一旦被行高拉伸，多出来的空间就会露出上下两条格栅条纹。
         /// 套一层 stack 可以绕开自动包装，面板背景就干净了。
         /// </summary>
-        private static PixelElement Plain(GameGridInventory grid)
+        private static PixelElement Plain(GameInventory grid)
         {
             return MachineryStack.Horizontal(new PixelElement[] { (PixelElement)grid });
         }

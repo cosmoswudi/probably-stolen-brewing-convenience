@@ -41,6 +41,9 @@ namespace BrewingConvenience
             ModHook.OnPlaceInventorInventoryItemEarly += OnInventorStock;
             ModHook.OnPlaceInventorInventoryItemLate += OnInventorStock;
             ModHook.OnGameLoadedLate += OnGameLoaded;
+            // 入睡瞬间（EndNight 取物品清单之前）执行自动酿酒：
+            // 塞进去的酒瓶能赶上当晚的发酵结算，出酒速度和手动一致。
+            ModHook.OnGoingSleepEarly += OnGoingSleep;
 
             RegisterDebugFunction();
 
@@ -53,6 +56,7 @@ namespace BrewingConvenience
             ModHook.OnPlaceInventorInventoryItemEarly -= OnInventorStock;
             ModHook.OnPlaceInventorInventoryItemLate -= OnInventorStock;
             ModHook.OnGameLoadedLate -= OnGameLoaded;
+            ModHook.OnGoingSleepEarly -= OnGoingSleep;
 
             try { ModHelper.RemoveDebugFunctions(ModId); } catch (Exception) { }
 
@@ -122,6 +126,30 @@ namespace BrewingConvenience
         }
 
         // ───────────────────────────────────────────────────── 配置 / 读档
+
+        // ───────────────────────────────────────────────────── 夜间自动酿酒
+
+        /// <summary>
+        /// 每家店可能有多台机器，逐个执行。
+        /// 机器自己判断：没解锁 / 没电池 / 电量不够 / 发酵区满 / 料不齐，都会安静跳过。
+        /// </summary>
+        private static void OnGoingSleep()
+        {
+            try
+            {
+                if (PlayerStore.Instance == null) return;
+
+                foreach (GameItem item in PlayerStore.Instance.FindAllItem(true))
+                {
+                    if (item == null || !item.IsID(BrewerMachine.ItemId)) continue;
+                    BrewerUnits.RunAutoFor(item);
+                }
+            }
+            catch (Exception e)
+            {
+                Warn("夜间自动酿酒失败: " + e.Message);
+            }
+        }
 
         /// <summary>读档后再刷一次机器名称，避免语言表未就绪时工厂里取到的是兜底串。</summary>
         private static void OnGameLoaded()

@@ -268,6 +268,56 @@ item.onOneSecondItemFunc                     // 每秒（慎用，见坑 17）
 machine.canItemTargetThisFunc / onItemTargetThisFunc   // 物品扔到物品上
 ```
 
+### 3.6 电力与"机器"标记
+
+电量单位是 **kJ**，功率单位 **kW**。
+
+```csharp
+// 电池物品上的 tag（PowerHelper 常量）
+"power_source_item"                  // 是电池
+"power_source_item_energy"           // 当前电量 kJ
+"power_source_item_max_energy"       // 容量 kJ
+"power_source_item_bandwidth"        // 单次最大输出 kJ
+
+PowerHelper.TryRemoveEnergy(battery, 4, false)   // 手动扣 4 kJ，返回扣掉的数量
+PowerHelper.CheckAvailablePower(battery)         // 剩余电量
+
+// 原版电池
+energy_credit          100 kJ   10 元
+energy_credit_ext      250 kJ   30 元
+energy_credit_breeder  100 kJ   可充（recharger 机器 CHARGE_RATE = 3）
+energy_credit_dis      一次性    带 POWER_SOURCE_ITEM_DISPOSABLE_TAG
+energy_credit_hyp     2500 kJ   Hypertech
+```
+
+「机器」不是类，而是一个 tag：
+
+```csharp
+MachineryHelper.MACHINERY_TAG = "machinery"          // 打上就算机器
+item.SetGameItemType("MACHINE");                     // 物品类型
+MachineHelper.SetupBatterySlot(slot, machine)        // 标准电池槽（自动打 MACHINE_RECHARGABLE_TAG）
+```
+
+**但打 `machinery` 的代价**：原版 `PowerHelper.SimulatePower` 会把机器纳入持续耗电（功率 × 时间），
+和"每晚固定扣 N kJ"的离散模型不兼容。**只想要离散扣电时，不要打这个 tag**，直接用
+`TryRemoveEnergy` 手动扣，代价是电量不显示在游戏电力面板里（自己在机器面板显示）。
+
+### 3.7 关键物品 id 速查
+
+| 用途 | 物品 id | 单价 | 占格 |
+|---|---|---|---|
+| 金属锭 | `metal_ingot` | 50 | 3×2 |
+| 电子元件 | `common_electronic` | 33 | 3×2 |
+| 电线 | `wire` | 16 | — |
+| 普通电池 | `energy_credit` | 10 | 1×2 |
+| 扩展电池 | `energy_credit_ext` | 30 | 1×2 |
+| 空酒瓶 | `wine_bottle` | 12 | 1×4 |
+| 空啤酒瓶 | `empty_beer_bottle` | 5 | 1×4（**不带** `WINE_CONTAINER_TAG`，不能酿酒） |
+| 贩卖机核心 | `vending_machine_core` | — | — |
+| 进料斗 | `intake_hopper` | 300 | 2×2 |
+| 出料斗 | `outlet_hopper` | 300 | 2×2 |
+| 充电器 | `recharger` | 150 | — |
+
 ---
 
 ## 4. 踩坑清单
@@ -363,7 +413,17 @@ machine.canItemTargetThisFunc / onItemTargetThisFunc   // 物品扔到物品上
 **E2. 往商人货架上加货，十次有九次失败**
 上架接口内部是 `TryAcceptAllOrDestroy`，要求**整块连续空位**。挂在 `Late` 时货架已被切碎，必然失败并把物品销毁。改挂 `Early`（商人开始摆货之前）先占位。
 
-**E3. 每秒回调里做重活**
+**E3. 进料斗不是"每夜一次"，是"每夜 3 个窗口 + 实时触发"**
+`PlayerStore.EndNight` 的顺序是：`HopperHelper.RunWindow(1)` → `onCycleEnd` → `RunWindow(2)` → `onCycleEndLate` → `RunWindow(3)`。
+漏斗按 `HOPPER_ORDER_INT` 分到 1–5 / 6–10 / 11–15 三个窗口。另外 `HopperHelper.Watch` 会在物品放入时实时调度一次。
+依赖"漏斗送完货再执行"的逻辑，要挂在 `onCycleEndLate`（第二窗口之后），否则可能料还没进来就开始处理。
+
+**E4. 在每日回调里新增的物品，当晚不会再收到自己的回调**
+`PlayerStore.EndNight` 用 `FindAllItem(true)` 先取快照再遍历，回调里新加入的物品不在快照里。
+所以"夜里自动填入的酒瓶"当晚不会推进发酵，会比手动操作多等一个夜晚。想避免就在
+`ModHook.OnWakingUpEarly`（起床时）执行自动化，让新瓶子赶上当晚的结算。
+
+**E5. 每秒回调里做重活**
 `onOneSecondItemFunc` 会在每个物品上每秒跑一次，里面做集合遍历/UI 刷新会直接把帧吃光。
 
 ### F. 创意工坊

@@ -33,6 +33,37 @@ namespace BrewingConvenience
         public const string UseYeastIntTag = "BREW_USE_YEAST_INT";    // 0 未设置 / 1 关 / 2 开
         public const string ForceIntTag    = "BREW_FORCE_INT";        // 0 未设置 / 1 优先 / 2 强制
         public const string LiquidContainer = "LIQUID_CONTAINER_TAG";
+
+        // ── 原版电力（PowerHelper 的常量，逐字抄写，改一个字符就静默失效）──
+        public const string PowerSource     = "power_source_item";            // 是电池
+        public const string PowerEnergy     = "power_source_item_energy";     // 当前电量 kJ
+        public const string PowerMaxEnergy  = "power_source_item_max_energy"; // 容量 kJ
+        public const string PowerBandwidth  = "power_source_item_bandwidth";  // 单次最大输出
+        public const string PowerDisposable = "POWER_SOURCE_ITEM_DISPOSABLE_TAG"; // 一次性电池
+
+        // ── 芯片升级（存在机器自己的 tag 上，随存档走）──
+        // 0 / 缺失 = 未解锁，1 = 已解锁；进度是累计值
+        public const string CoreItemId       = "vending_machine_core";
+        public const string AutoUnlockInt    = "BREW_AUTO_UNLOCK_INT";
+        public const string PrintUnlockInt   = "BREW_PRINT_UNLOCK_INT";
+        public const string IngotProgressInt = "BREW_INGOT_PROGRESS_INT";
+        public const string ElecProgressInt  = "BREW_ELEC_PROGRESS_INT";
+
+        public const string MetalIngotId       = "metal_ingot";
+        public const string CommonElectronicId = "common_electronic";
+        public const string WineBottleId       = "wine_bottle";
+
+        /// <summary>解锁自动酿酒需要的金属锭数量。</summary>
+        public const int IngotCost = 9;
+
+        /// <summary>解锁酒瓶打印需要的电子元件数量。</summary>
+        public const int ElecCost = 12;
+
+        /// <summary>自动酿酒每晚的电量消耗（kJ）。不管当晚酿几瓶，一晚只扣一次。</summary>
+        public const int AutoCostKj = 4;
+
+        /// <summary>打印一个空酒瓶的电量消耗（kJ）。</summary>
+        public const int PrintCostKj = 8;
         public const string IgnoreChildValue = "IGNORE_CHILD_VALUE";
 
         public const int StateEmpty = 0;
@@ -139,6 +170,27 @@ namespace BrewingConvenience
         public static bool IsWaterSource(GameItem item)
         {
             return HasLiquid(item) && WineState(item) == StateEmpty;
+        }
+
+        public static bool IsBattery(GameItem item)
+        {
+            return item != null && item.IsTag(PowerSource);
+        }
+
+        /// <summary>电池当前电量 kJ。不是电池一律 0。</summary>
+        public static int BatteryEnergy(GameItem battery)
+        {
+            if (!IsBattery(battery)) return 0;
+            try { return battery.GetTagReadonly(PowerEnergy).GetInt(); }
+            catch (Exception) { return 0; }
+        }
+
+        /// <summary>电池容量 kJ。</summary>
+        public static int BatteryMaxEnergy(GameItem battery)
+        {
+            if (!IsBattery(battery)) return 0;
+            try { return battery.GetTagReadonly(PowerMaxEnergy).GetInt(); }
+            catch (Exception) { return 0; }
         }
 
         /// <summary>容器里有没有液体。非液体容器一律 false。</summary>
