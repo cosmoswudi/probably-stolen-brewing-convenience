@@ -15,6 +15,14 @@ namespace BrewingConvenience
         public GameSlotInventory BatterySlot;
         public GameSlotInventory CoreSlot;
 
+        /// <summary>
+        /// 升级材料槽。原版"把锭拖到核心上"的判定写死了父物品必须是 vending_machine
+        /// （MaterialDirectory.CanIngotTarget → CanUpgradedCapacity(GetParentItem(core))，
+        ///   UpgradeCapacity 里再判一次 identifier == "vending_machine"），
+        /// 我们的机器不是贩卖机，那条路走不通。所以改成专用槽位：拖进来即消耗、即加进度。
+        /// </summary>
+        public GameSlotInventory MaterialSlot;
+
         /// <summary>左列那行升级进度文字。</summary>
         public MachineryText UpgradeText;
 
@@ -141,16 +149,19 @@ namespace BrewingConvenience
             return false;
         }
 
-        public void DoUpgrade(GameItem material)
+        /// <summary>
+        /// 材料进槽：立刻吃掉一个，进度 +1。
+        /// 槽位要求"芯片槽里已经有核心"，否则材料拖不进来。
+        /// </summary>
+        public void ConsumeUpgradeMaterial(GameItem material)
         {
-            if (!CanUpgrade(material)) return;
+            if (material == null || !CanUpgrade(material)) return;
 
             bool ingot = material.IsID(WineTags.MetalIngotId);
             string progressTag = ingot ? WineTags.IngotProgressInt : WineTags.ElecProgressInt;
             string unlockTag = ingot ? WineTags.AutoUnlockInt : WineTags.PrintUnlockInt;
             int cost = ingot ? WineTags.IngotCost : WineTags.ElecCost;
 
-            // 先扣材料，再记进度 —— 顺序反过来的话，Destroy 抛异常会让玩家白拿进度。
             try
             {
                 if (material.parentInventory != null) material.parentInventory.Expel(material);
@@ -169,19 +180,6 @@ namespace BrewingConvenience
                 Machine.ModifyTag(unlockTag, st => { st.Enable(); st.SetInt(1); }, false);
 
             RefreshUpgradeText();
-        }
-
-        /// <summary>
-        /// 芯片进槽时挂回调。用的是原版贩卖机核心那套字段
-        /// （MaterialDirectory 拖金属锭到 vending_machine_core 上走的就是它们）。
-        /// 参数顺序是 (被拖的物品, 自己)。
-        /// </summary>
-        public void BindCore(GameItem core)
-        {
-            if (core == null) return;
-            core.mayThisTargetItemFunc = (src, self) => CanUpgrade(src);
-            core.canThisTargetItemFunc = (src, self) => CanUpgrade(src);
-            core.onThisTargetItemFunc = (src, self) => DoUpgrade(src);
         }
 
         public void RefreshUpgradeText()

@@ -36,17 +36,26 @@ namespace BrewingConvenience
 
             // ── 9 / 10：电池槽、芯片槽 ─────────────────────────────────
             // 放在 8 个区域之后创建，旧存档的前 8 个坐标不受影响。
+            // 电池槽：仿照原版熔炉/机器，用半透明的电池图标做底，
+            // 不然空槽就是一块空白，玩家不知道这里能放什么。
             units.BatterySlot = new GameSlotInventory();
             units.BatterySlot.mayInventoryAddItemFunc = (item, inv) => WineTags.IsBattery(item);
+            units.BatterySlot.SetBackgroundFadeSprite("Items/items_tool", "battery100", 0.5f, 0.5f);
 
             units.CoreSlot = new GameSlotInventory();
             units.CoreSlot.mayInventoryAddItemFunc = (item, inv) =>
                 item != null && item.IsID(WineTags.CoreItemId);
-            units.CoreSlot.onSlotAddItemEndFunc = (item, inv, slot) =>
-            {
-                units.BindCore(item);       // 挂"能接收金属锭/电子元件"的回调
-                units.RefreshUpgradeText();
-            };
+            units.CoreSlot.SetBackgroundFadeSprite("Items/items_furniture", "vending_machine_core", 0.5f, 0.5f);
+            units.CoreSlot.onSlotAddItemEndFunc = (item, inv, slot) => units.RefreshUpgradeText();
+
+            // 升级材料槽：把金属锭 / 电子元件拖进来，立刻消耗并加进度。
+            // 原版"拖到核心上"的路径要求父物品是 vending_machine，非贩卖机一律 return，
+            // 所以只能用自己的槽位承接。
+            units.MaterialSlot = new GameSlotInventory();
+            units.MaterialSlot.mayInventoryAddItemFunc = (item, inv) =>
+                units.CoreSlot.childItems.Count > 0 && units.CanUpgrade(item);
+            units.MaterialSlot.SetBackgroundFadeSprite("Items/items_material", "metal_ingot", 0.5f, 0.5f);
+            units.MaterialSlot.onSlotAddItemEndFunc = (item, inv, slot) => units.ConsumeUpgradeMaterial(item);
 
             // ── 各区域只收该收的东西 ───────────────────────────────────
             // 葡萄只能拖进「投放区」；正常/小/其他三个输出区平时一律拒绝手动放入，
@@ -165,6 +174,8 @@ namespace BrewingConvenience
                 Loc.Get("panel_battery", "电池"), Plain(units.BatterySlot), "battery", false);
             var corePanel = MachineHelper.Panel(
                 Loc.Get("panel_core", "芯片"), Plain(units.CoreSlot), "core", false);
+            var materialPanel = MachineHelper.Panel(
+                Loc.Get("panel_upgrade", "升级"), Plain(units.MaterialSlot), "upgrade", false);
 
             // 列宽只有 2 格（32px），按钮文字必须两个字
             var printOneButton = new MachineryButton(Loc.Get("btn_print", "打印"), null, 34, 22);
@@ -176,7 +187,7 @@ namespace BrewingConvenience
 
             var leftColumn = MachineryStack.Vertical(new PixelElement[]
             {
-                batteryPanel, corePanel, printOneButton, printFillButton, units.UpgradeText
+                batteryPanel, corePanel, materialPanel, printOneButton, printFillButton, units.UpgradeText
             });
             leftColumn.SetAlign(MachineryStack.Align.Start);
 
@@ -344,7 +355,7 @@ namespace BrewingConvenience
             "三个果区都会取用：正常果 / 小果酿高档；其他果（未熟·干枯·发霉）分值低，只会在低档时被选中。\n\n" +
             "【电池 / 芯片】\n" +
             "左边一列：电池槽放原版电池；芯片槽放「售卖机核心」。\n" +
-            "把金属锭或电子元件直接拖到芯片上就能升级，进度显示在下方。\n" +
+            "把金属锭或电子元件拖进「升级」格就会消耗并累计，进度显示在下方。\n" +
             "9 个金属锭 → 解锁夜间自动酿酒：每晚消耗 4 kJ，入睡时自动分拣并酿满发酵区。\n" +
             "12 个电子元件 → 解锁酒瓶打印：每瓶 8 kJ，「打印」出一个，「填满」补到 8 个。\n" +
             "没电时自动酿酒会安静跳过，手动开酿不受电量影响。\n\n" +
